@@ -140,6 +140,19 @@ abstract class Model extends \Jenssegers\Eloquent\Model {
     }
 
     /**
+     * Sync a single original attribute with its current value.
+     *
+     * @param  string  $attribute
+     * @return $this
+     */
+    public function syncOriginalAttribute($attribute)
+    {
+        array_set($this->original, $attribute, array_get($this->attributes, $attribute));
+
+        return $this;
+    }
+
+    /**
      * Convert a DateTime to a storable MongoDate object.
      *
      * @param  DateTime|int  $value
