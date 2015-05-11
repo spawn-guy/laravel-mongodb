@@ -22,10 +22,16 @@ Installation
 
 Make sure you have the MongoDB PHP driver installed. You can find installation instructions at http://php.net/manual/en/mongo.installation.php
 
-Install using composer:
+For Laravel 5, install the latest stable version using composer:
 
-```json
+```
 composer require jenssegers/mongodb
+```
+
+For Laravel 4.2, use version `~2.0`:
+
+```
+composer require jenssegers/mongodb ~2.0
 ```
 
 Add the service provider in `app/config/app.php`:
@@ -35,6 +41,15 @@ Add the service provider in `app/config/app.php`:
 ```
 
 The service provider will register a mongodb database extension with the original database manager. There is no need to register additional facades or objects. When using mongodb connections, Laravel will automatically provide you with the corresponding mongodb objects.
+
+For usage outside Laravel, check out the [Capsule manager](https://github.com/illuminate/database/blob/master/README.md) and add:
+
+```php
+$capsule->getDatabaseManager()->extend('mongodb', function($config)
+{
+    return new Jenssegers\Mongodb\Connection($config);
+});
+```
 
 Configuration
 -------------
@@ -48,36 +63,31 @@ Change your default database connection name in `app/config/database.php`:
 And add a new mongodb connection:
 
 ```php
-'mongodb' => [
+'mongodb' => array(
     'driver'   => 'mongodb',
     'host'     => 'localhost',
     'port'     => 27017,
     'username' => 'username',
     'password' => 'password',
-    'database' => 'database'
-],
+    'database' => 'database',
+    'options' => array(
+        'db' => 'admin' // sets the authentication database required by mongo 3
+    )
+),
 ```
 
 You can connect to multiple servers or replica sets with the following configuration:
 
 ```php
-'mongodb' => [
+'mongodb' => array(
     'driver'   => 'mongodb',
-    'host'     => ['server1:27017', 'server2:27018'],
+    'host'     => array('server1', 'server2'),
+    'port'     => 27017,
     'username' => 'username',
     'password' => 'password',
     'database' => 'database',
-    'options'  => ['replicaSet' => 'replicaSetName']
-],
-```
-
-Or if you prefer to pass the entire DSN at once:
-
-```php
-'mongodb' => [
-    'driver'   => 'mongodb',
-    'dsn'      => 'mongodb://db1.example.net,db2.example.net:2500/?replicaSet=test'
-],
+    'options'  => array('replicaSet' => 'replicaSetName')
+),
 ```
 
 Eloquent
@@ -86,7 +96,7 @@ Eloquent
 This package includes a MongoDB enabled Eloquent class that you can use to define models for corresponding collections.
 
 ```php
-use Jenssegers\Mongodb\Eloquent\Model as Eloquent;
+use Jenssegers\Mongodb\Model as Eloquent;
 
 class User extends Eloquent {}
 ```
@@ -94,7 +104,7 @@ class User extends Eloquent {}
 Note that we did not tell Eloquent which collection to use for the `User` model. Just like the original Eloquent, the lower-case, plural name of the class will be used as the table name unless another name is explicitly specified. You may specify a custom collection (alias for table) by defining a `collection` property on your model:
 
 ```php
-use Jenssegers\Mongodb\Eloquent\Model as Eloquent;
+use Jenssegers\Mongodb\Model as Eloquent;
 
 class User extends Eloquent {
 
@@ -106,7 +116,7 @@ class User extends Eloquent {
 **NOTE:** Eloquent will also assume that each collection has a primary key column named id. You may define a `primaryKey` property to override this convention. Likewise, you may define a `connection` property to override the name of the database connection that should be used when utilizing the model.
 
 ```php
-use Jenssegers\Mongodb\Eloquent\Model as Eloquent;
+use Jenssegers\Mongodb\Model as Eloquent;
 
 class MyModel extends Eloquent {
 
@@ -122,7 +132,7 @@ Everything else works just like the original Eloquent model. Read more about the
 You may also register an alias for the MongoDB model by adding the following to the alias array in `app/config/app.php`:
 
 ```php
-'Moloquent'       => 'Jenssegers\Mongodb\Eloquent\Model',
+'Moloquent'       => 'Jenssegers\Mongodb\Model',
 ```
 
 This will allow you to use the registered alias like:
@@ -212,10 +222,10 @@ MongoDB Support => enabled
 
 #### Argument 2 passed to Illuminate\Database\Query\Builder::__construct() must be an instance of Illuminate\Database\Query\Grammars\Grammar, null given
 
-To solve this, you will need to check two things. First check if your model is extending the correct class; this class should be `Jenssegers\Mongodb\Eloquent\Model`. Secondly, check if your model is using a MongoDB connection. If you did not change the default database connection in your database configuration file, you need to specify the MongoDB enabled connection. This is what your class should look like if you did not set up an alias and change the default database connection:
+To solve this, you will need to check two things. First check if your model is extending the correct class; this class should be `Jenssegers\Mongodb\Model`. Secondly, check if your model is using a MongoDB connection. If you did not change the default database connection in your database configuration file, you need to specify the MongoDB enabled connection. This is what your class should look like if you did not set up an alias and change the default database connection:
 
 ```php
-use Jenssegers\Mongodb\Eloquent\Model as Eloquent;
+use Jenssegers\Mongodb\Model as Eloquent;
 
 class User extends Eloquent {
 
@@ -510,7 +520,7 @@ Eloquent allows you to work with Carbon/DateTime objects instead of MongoDate ob
 Example:
 
 ```php
-use Jenssegers\Mongodb\Eloquent\Model as Eloquent;
+use Jenssegers\Mongodb\Model as Eloquent;
 
 class User extends Eloquent {
 
@@ -537,7 +547,7 @@ Supported relations are:
 Example:
 
 ```php
-use Jenssegers\Mongodb\Eloquent\Model as Eloquent;
+use Jenssegers\Mongodb\Model as Eloquent;
 
 class User extends Eloquent {
 
@@ -552,7 +562,7 @@ class User extends Eloquent {
 And the inverse relation:
 
 ```php
-use Jenssegers\Mongodb\Eloquent\Model as Eloquent;
+use Jenssegers\Mongodb\Model as Eloquent;
 
 class Item extends Eloquent {
 
@@ -567,7 +577,7 @@ class Item extends Eloquent {
 The belongsToMany relation will not use a pivot "table", but will push id's to a __related_ids__ attribute instead. This makes the second parameter for the belongsToMany method useless. If you want to define custom keys for your relation, set it to `null`:
 
 ```php
-use Jenssegers\Mongodb\Eloquent\Model as Eloquent;
+use Jenssegers\Mongodb\Model as Eloquent;
 
 class User extends Eloquent {
 
@@ -587,7 +597,7 @@ Other relations are not yet supported, but may be added in the future. Read more
 If you want to embed models, rather than referencing them, you can use the `embedsMany` relation. This relation is similar to the `hasMany` relation, but embeds the models inside the parent object.
 
 ```php
-use Jenssegers\Mongodb\Eloquent\Model as Eloquent;
+use Jenssegers\Mongodb\Model as Eloquent;
 
 class User extends Eloquent {
 
@@ -682,7 +692,7 @@ $books = $user->books()->where('rating', '>', 5)->orderBy('title')->get();
 The embedsOne relation is similar to the EmbedsMany relation, but only embeds a single model.
 
 ```php
-use Jenssegers\Mongodb\Eloquent\Model as Eloquent;
+use Jenssegers\Mongodb\Model as Eloquent;
 
 class Book extends Eloquent {
 
@@ -730,16 +740,14 @@ $book->author()->save($newAuthor);
 
 ### MySQL Relations
 
-If you're using a hybrid MongoDB and SQL setup, you're in luck! The model will automatically return a MongoDB- or SQL-relation based on the type of the related model. Of course, if you want this functionality to work both ways, your SQL-models will need to use the `Jenssegers\Mongodb\Eloquent\HybridRelations` trait. Note that this functionality only works for hasOne, hasMany and belongsTo relations.
+If you're using a hybrid MongoDB and SQL setup, you're in luck! The model will automatically return a MongoDB- or SQL-relation based on the type of the related model. Of course, if you want this functionality to work both ways, your SQL-models will need to extend `Jenssegers\Eloquent\Model`. Note that this functionality only works for hasOne, hasMany and belongsTo relations.
 
 Example SQL-based User model:
 
 ```php
-use Jenssegers\Mongodb\Eloquent\HybridRelations;
+use Jenssegers\Eloquent\Model as Eloquent;
 
-class User extends \Illuminate\Database\Eloquent\Model {
-
-    use HybridRelations;
+class User extends Eloquent {
 
     protected $connection = 'mysql';
 
@@ -754,7 +762,9 @@ class User extends \Illuminate\Database\Eloquent\Model {
 And the Mongodb-based Message model:
 
 ```php
-class Message extends \Jenssegers\Mongodb\Eloquent\Model {
+use Jenssegers\Mongodb\Model as Eloquent;
+
+class Message extends Eloquent {
 
     protected $connection = 'mongodb';
 

@@ -122,6 +122,19 @@ abstract class Model extends BaseModel {
     }
 
     /**
+     * Sync a single original attribute with its current value.
+     *
+     * @param  string  $attribute
+     * @return $this
+     */
+    public function syncOriginalAttribute($attribute)
+    {
+        array_set($this->original, $attribute, array_get($this->attributes, $attribute));
+
+        return $this;
+    }
+
+    /**
      * Convert a DateTime to a storable MongoDate object.
      *
      * @param  DateTime|int  $value
@@ -304,6 +317,15 @@ abstract class Model extends BaseModel {
             {
                 $value = (string) $value;
             }
+        }
+
+        // If an attribute is a date; and used as a dot-notation date - fix it after parent
+        foreach ($this->getDates() as $key) {
+            // iterate over dates if dot-notation ONLY, and exists
+            if (!str_contains($key, '.') || !array_has($attributes, $key)) continue;
+
+            $value = (string)$this->asDateTime(array_get($attributes, $key));
+            array_set($attributes, $key, $value);
         }
 
         return $attributes;
