@@ -327,7 +327,7 @@ abstract class Model extends BaseModel {
             }
 
             //if (is_nan($value) || is_infinite($value))
-            if (is_nan($value))
+            if (is_double($value) && is_nan($value))
             {
                 $value = 0;
             }
