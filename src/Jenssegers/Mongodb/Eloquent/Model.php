@@ -325,6 +325,12 @@ abstract class Model extends BaseModel {
             {
                 $value = (string) $this->asDateTime($value);
             }
+
+            //if (is_nan($value) || is_infinite($value))
+            if (is_nan($value))
+            {
+                $value = 0;
+            }
         });
         /* FIXME: it messes with parameters
          foreach ($this->getDates() as $key) {
