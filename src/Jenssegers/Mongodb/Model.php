@@ -354,7 +354,7 @@ abstract class Model extends \Jenssegers\Eloquent\Model {
             }
 
             //if (is_nan($value) || is_infinite($value))
-            if (is_nan($value))
+            if (is_double($value) && is_nan($value))
             {
                 $value = 0;
             }
