@@ -35,6 +35,13 @@ abstract class Model extends \Jenssegers\Eloquent\Model {
     protected $parentRelation;
 
     /**
+     * The key if the model is and rootmodel of an embbed model
+     * dn implementation
+     * @var bool
+     */
+    public $rootModel = false;
+
+    /**
      * Custom accessor for the model's id.
      *
      * @param  mixed  $value

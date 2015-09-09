@@ -129,4 +129,22 @@ class EmbedsOne extends EmbedsOneOrMany {
         return $this->performDelete($model);
     }
 
+    /**
+     * Shorthand to get the results of the relationship.
+     *
+     * @return \Jenssegers\Mongodb\Eloquent\Collection
+     */
+    public function get()
+    {
+        return new \Jenssegers\Mongodb\Eloquent\Collection($this->getResults());
+    }
+    /**
+     * Get the embedded records array.
+     * dn additional because null will failed on match function
+     * @return array
+     */
+    protected function getEmbedded()
+    {
+        return parent::getEmbedded() ?: [];
+    }
 }
