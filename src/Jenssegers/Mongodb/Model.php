@@ -2,16 +2,21 @@
 
 use Carbon\Carbon;
 use DateTime;
-use MongoDate;
-use MongoId;
+use Illuminate\Database\Eloquent\Model as BaseModel;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Jenssegers\Mongodb\Eloquent\Builder;
+use Jenssegers\Mongodb\Eloquent\HybridRelations;
+use Jenssegers\Mongodb\Query\Builder as QueryBuilder;
 use Jenssegers\Mongodb\Relations\EmbedsMany;
 use Jenssegers\Mongodb\Relations\EmbedsOne;
 use Jenssegers\Mongodb\Relations\EmbedsOneOrMany;
+use MongoDate;
+use MongoId;
 use ReflectionMethod;
 
-abstract class Model extends \Jenssegers\Eloquent\Model {
+abstract class Model extends BaseModel {
+
+    use HybridRelations;
 
     /**
      * The collection associated with the model.
@@ -198,7 +203,7 @@ abstract class Model extends \Jenssegers\Eloquent\Model {
      */
     protected function getDateFormat()
     {
-        return 'Y-m-d H:i:s';
+        return $this->dateFormat ?: 'Y-m-d H:i:s';
     }
 
     /**
@@ -218,9 +223,7 @@ abstract class Model extends \Jenssegers\Eloquent\Model {
      */
     public function getTable()
     {
-        if (isset($this->collection)) return $this->collection;
-
-        return parent::getTable();
+        return $this->collection ?: parent::getTable();
     }
 
     /**
@@ -299,7 +302,6 @@ abstract class Model extends \Jenssegers\Eloquent\Model {
      *
      * @param  string  $key
      * @param  mixed   $value
-     * @return void
      */
     public function setAttribute($key, $value)
     {
@@ -361,6 +363,29 @@ abstract class Model extends \Jenssegers\Eloquent\Model {
     }
 
     /**
+     * Determine if the new and old values for a given key are numerically equivalent.
+     *
+     * @param  string  $key
+     * @return bool
+     */
+    protected function originalIsNumericallyEquivalent($key)
+    {
+        $current = $this->attributes[$key];
+
+        $original = $this->original[$key];
+
+        // Date comparison.
+        if (in_array($key, $this->getDates()))
+        {
+            $current = $current instanceof MongoDate ? $this->asDateTime($current) : $current;
+            $original = $original instanceof MongoDate ? $this->asDateTime($original) : $original;
+            return $current == $original;
+        }
+
+        return parent::originalIsNumericallyEquivalent($key);
+    }
+
+    /**
      * Remove one or more fields.
      *
      * @param  mixed  $columns
@@ -368,7 +393,7 @@ abstract class Model extends \Jenssegers\Eloquent\Model {
      */
     public function drop($columns)
     {
-        if ( ! is_array($columns)) $columns = array($columns);
+        if ( ! is_array($columns)) $columns = [$columns];
 
         // Unset attributes
         foreach ($columns as $column)
@@ -401,7 +426,7 @@ abstract class Model extends \Jenssegers\Eloquent\Model {
             }
 
             // Do batch push by default.
-            if ( ! is_array($values)) $values = array($values);
+            if ( ! is_array($values)) $values = [$values];
 
             $query = $this->setKeysForSaveQuery($this->newQuery());
 
@@ -423,7 +448,7 @@ abstract class Model extends \Jenssegers\Eloquent\Model {
     public function pull($column, $values)
     {
         // Do batch pull by default.
-        if ( ! is_array($values)) $values = array($values);
+        if ( ! is_array($values)) $values = [$values];
 
         $query = $this->setKeysForSaveQuery($this->newQuery());
 
@@ -438,11 +463,10 @@ abstract class Model extends \Jenssegers\Eloquent\Model {
      * @param  string  $column
      * @param  array   $values
      * @param  bool    $unique
-     * @return void
      */
     protected function pushAttributeValues($column, array $values, $unique = false)
     {
-        $current = $this->getAttributeFromArray($column) ?: array();
+        $current = $this->getAttributeFromArray($column) ?: [];
 
         foreach ($values as $value)
         {
@@ -462,11 +486,10 @@ abstract class Model extends \Jenssegers\Eloquent\Model {
      *
      * @param  string  $column
      * @param  array   $values
-     * @return void
      */
     protected function pullAttributeValues($column, array $values)
     {
-        $current = $this->getAttributeFromArray($column) ?: array();
+        $current = $this->getAttributeFromArray($column) ?: [];
 
         foreach ($values as $value)
         {
@@ -515,6 +538,18 @@ abstract class Model extends \Jenssegers\Eloquent\Model {
     }
 
     /**
+     * Get a new query builder instance for the connection.
+     *
+     * @return Builder
+     */
+    protected function newBaseQueryBuilder()
+    {
+        $connection = $this->getConnection();
+
+        return new QueryBuilder($connection, $connection->getPostProcessor());
+    }
+
+    /**
      * Handle dynamic method calls into the method.
      *
      * @param  string  $method
@@ -526,7 +561,7 @@ abstract class Model extends \Jenssegers\Eloquent\Model {
         // Unset method
         if ($method == 'unset')
         {
-            return call_user_func_array(array($this, 'drop'), $parameters);
+            return call_user_func_array([$this, 'drop'], $parameters);
         }
 
         return parent::__call($method, $parameters);

@@ -6,8 +6,6 @@ class MorphTo extends EloquentMorphTo {
 
     /**
      * Set the base constraints on the relation query.
-     *
-     * @return void
      */
     public function addConstraints()
     {
@@ -18,6 +16,25 @@ class MorphTo extends EloquentMorphTo {
             // of the related models matching on the foreign key that's on a parent.
             $this->query->where($this->otherKey, '=', $this->parent->{$this->foreignKey});
         }
+    }
+
+    /**
+     * Get all of the relation results for a type.
+     *
+     * @param  string  $type
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    protected function getResultsByType($type)
+    {
+        $instance = $this->createModelByType($type);
+
+        $key = $instance->getKeyName();
+
+        $query = $instance->newQuery();
+
+        $query = $this->useWithTrashed($query);
+
+        return $query->whereIn($key, $this->gatherKeysByType($type)->all())->get();
     }
 
 }

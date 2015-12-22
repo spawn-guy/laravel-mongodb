@@ -1,7 +1,7 @@
 Laravel MongoDB
 ===============
 
-[![Latest Stable Version](http://img.shields.io/github/release/jenssegers/laravel-mongodb.svg)](https://packagist.org/packages/jenssegers/mongodb) [![Total Downloads](http://img.shields.io/packagist/dm/jenssegers/mongodb.svg)](https://packagist.org/packages/jenssegers/mongodb) [![Build Status](http://img.shields.io/travis/jenssegers/laravel-mongodb.svg)](https://travis-ci.org/jenssegers/laravel-mongodb) [![Coverage Status](http://img.shields.io/coveralls/jenssegers/laravel-mongodb.svg)](https://coveralls.io/r/jenssegers/laravel-mongodb?branch=master)
+[![Latest Stable Version](http://img.shields.io/github/release/jenssegers/laravel-mongodb.svg)](https://packagist.org/packages/jenssegers/mongodb) [![Total Downloads](http://img.shields.io/packagist/dm/jenssegers/mongodb.svg)](https://packagist.org/packages/jenssegers/mongodb) [![Build Status](http://img.shields.io/travis/jenssegers/laravel-mongodb.svg)](https://travis-ci.org/jenssegers/laravel-mongodb) [![Coverage Status](http://img.shields.io/coveralls/jenssegers/laravel-mongodb.svg)](https://coveralls.io/r/jenssegers/laravel-mongodb?branch=master) [![Donate](https://img.shields.io/badge/donate-paypal-blue.svg)](https://www.paypal.me/jenssegers)
 
 An Eloquent model and Query builder with support for MongoDB, using the original Laravel API. *This library extends the original Laravel classes, so it uses exactly the same methods.*
 
@@ -28,22 +28,18 @@ For Laravel 5, install the latest stable version using composer:
 composer require jenssegers/mongodb
 ```
 
+### Version Compatibility
+
+ Laravel  | Package
+:---------|:----------
+ 4.2.x    | 2.0.x
+ 5.0.x    | 2.1.x
+ 5.1.x    | 2.2.x
+
 And add the service provider in `config/app.php`:
 
 ```php
 Jenssegers\Mongodb\MongodbServiceProvider::class,
-```
-
-For Laravel 4.2, use version `~2.0`:
-
-```
-composer require jenssegers/mongodb ~2.0
-```
-
-And add the service provider as follows in `app/config/app.php`:
-
-```php
-'Jenssegers\Mongodb\MongodbServiceProvider',
 ```
 
 For usage with [Lumen](http://lumen.laravel.com), add the service provider in `bootstrap/app.php`. In this file, you will also need to enable Eloquent. You must however ensure that your call to `$app->withEloquent();` is **below** where you have registered the `MongodbServiceProvider`:
@@ -71,7 +67,7 @@ Configuration
 Change your default database connection name in `app/config/database.php`:
 
 ```php
-'default' => 'mongodb',
+'default' => env('DB_CONNECTION', 'mongodb'),
 ```
 
 And add a new mongodb connection:
@@ -214,7 +210,7 @@ This service provider will slightly modify the internal DatabaseReminderReposito
 
 ### Sentry
 
-If yo want to use this library with [Sentry](https://cartalyst.com/manual/sentry), then check out https://github.com/jenssegers/Laravel-MongoDB-Sentry
+If you want to use this library with [Sentry](https://cartalyst.com/manual/sentry), then check out https://github.com/jenssegers/Laravel-MongoDB-Sentry
 
 ### Sessions
 
