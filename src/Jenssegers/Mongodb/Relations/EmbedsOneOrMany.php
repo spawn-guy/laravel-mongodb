@@ -1,13 +1,12 @@
 <?php namespace Jenssegers\Mongodb\Relations;
 
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection as BaseCollection;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
-use Jenssegers\Mongodb\Eloquent\Collection;
 
-abstract class EmbedsOneOrMany extends Relation {
-
+abstract class EmbedsOneOrMany extends Relation
+{
     /**
      * The local key of the parent model.
      *
@@ -49,8 +48,7 @@ abstract class EmbedsOneOrMany extends Relation {
         $this->relation = $relation;
 
          // If this is a nested relation, we need to get the parent query instead.
-        if ($parentRelation = $this->getParentRelation())
-        {
+        if ($parentRelation = $this->getParentRelation()) {
             $this->query = $parentRelation->getQuery();
         }
 
@@ -62,8 +60,7 @@ abstract class EmbedsOneOrMany extends Relation {
      */
     public function addConstraints()
     {
-        if (static::$constraints)
-        {
+        if (static::$constraints) {
             $this->query->where($this->getQualifiedParentKeyName(), '=', $this->getParentKey());
         }
     }
@@ -105,10 +102,9 @@ abstract class EmbedsOneOrMany extends Relation {
      * @param  string  $relation
      * @return array
      */
-    public function match(array $models, BaseCollection $results, $relation)
+    public function match(array $models, Collection $results, $relation)
     {
-        foreach ($models as $model)
-        {
+        foreach ($models as $model) {
             $results = $model->$relation()->getResults();
 
             //add attribute to model with rootmodel to Jenssengers\MongoDb\Model
@@ -123,7 +119,7 @@ abstract class EmbedsOneOrMany extends Relation {
     /**
      * Shorthand to get the results of the relationship.
      *
-     * @return \Jenssegers\Mongodb\Eloquent\Collection
+     * @return \Illuminate\Database\Eloquent\Collection
      */
     public function get()
     {
@@ -200,8 +196,7 @@ abstract class EmbedsOneOrMany extends Relation {
     {
         $instances = [];
 
-        foreach ($records as $record)
-        {
+        foreach ($records as $record) {
             $instances[] = $this->create($record);
         }
 
@@ -216,16 +211,18 @@ abstract class EmbedsOneOrMany extends Relation {
      */
     protected function getIdsArrayFrom($ids)
     {
-        if ($ids instanceof Collection)
-        {
+        if ($ids instanceof \Illuminate\Support\Collection) {
             $ids = $ids->all();
         }
 
-        if ( ! is_array($ids)) $ids = [$ids];
+        if (! is_array($ids)) {
+            $ids = [$ids];
+        }
 
-        foreach ($ids as &$id)
-        {
-            if ($id instanceof Model) $id = $id->getKey();
+        foreach ($ids as &$id) {
+            if ($id instanceof Model) {
+                $id = $id->getKey();
+            }
         }
 
         return $ids;
@@ -241,7 +238,10 @@ abstract class EmbedsOneOrMany extends Relation {
         // Get raw attributes to skip relations and accessors.
         $attributes = $this->parent->getAttributes();
 
-        return isset($attributes[$this->localKey]) ? $attributes[$this->localKey] : null;
+        // Get embedded models form parent attributes.
+        $embedded = isset($attributes[$this->localKey]) ? (array) $attributes[$this->localKey] : null;
+
+        return $embedded;
     }
 
     /**
@@ -252,15 +252,15 @@ abstract class EmbedsOneOrMany extends Relation {
      */
     protected function setEmbedded($records)
     {
+        // Assign models to parent attributes array.
         $attributes = $this->parent->getAttributes();
-
         $attributes[$this->localKey] = $records;
 
         // Set raw attributes to skip mutators.
         $this->parent->setRawAttributes($attributes);
 
         // Set the relation on the parent.
-        return $this->parent->setRelation($this->relation, $this->getResults());
+        return $this->parent->setRelation($this->relation, $records === null ? null : $this->getResults());
     }
 
     /**
@@ -271,8 +271,7 @@ abstract class EmbedsOneOrMany extends Relation {
      */
     protected function getForeignKeyValue($id)
     {
-        if ($id instanceof Model)
-        {
+        if ($id instanceof Model) {
             $id = $id->getKey();
         }
 
@@ -290,13 +289,11 @@ abstract class EmbedsOneOrMany extends Relation {
     {
         $models = [];
 
-        foreach ($records as $attributes)
-        {
+        foreach ($records as $attributes) {
             $models[] = $this->toModel($attributes);
         }
 
-        if (count($models) > 0)
-        {
+        if (count($models) > 0) {
             $models = $this->eagerLoadRelations($models);
         }
 
@@ -311,7 +308,9 @@ abstract class EmbedsOneOrMany extends Relation {
      */
     protected function toModel($attributes = [])
     {
-        if (is_null($attributes)) return;
+        if (is_null($attributes)) {
+            return;
+        }
 
         $model = $this->related->newFromBuilder((array) $attributes);
 
@@ -378,8 +377,7 @@ abstract class EmbedsOneOrMany extends Relation {
      */
     protected function getPathHierarchy($glue = '.')
     {
-        if ($parentRelation = $this->getParentRelation())
-        {
+        if ($parentRelation = $this->getParentRelation()) {
             return $parentRelation->getPathHierarchy($glue) . $glue . $this->localKey;
         }
 
@@ -393,8 +391,7 @@ abstract class EmbedsOneOrMany extends Relation {
      */
     public function getQualifiedParentKeyName()
     {
-        if ($parentRelation = $this->getParentRelation())
-        {
+        if ($parentRelation = $this->getParentRelation()) {
             return $parentRelation->getPathHierarchy() . '.' . $this->parent->getKeyName();
         }
 
@@ -410,5 +407,4 @@ abstract class EmbedsOneOrMany extends Relation {
     {
         return $this->parent->getKey();
     }
-
 }

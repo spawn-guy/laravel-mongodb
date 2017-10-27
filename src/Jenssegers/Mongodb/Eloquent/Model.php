@@ -1,20 +1,19 @@
-<?php namespace Jenssegers\Mongodb;
+<?php namespace Jenssegers\Mongodb\Eloquent;
 
 use Carbon\Carbon;
 use DateTime;
 use Illuminate\Database\Eloquent\Model as BaseModel;
 use Illuminate\Database\Eloquent\Relations\Relation;
-use Jenssegers\Mongodb\Eloquent\Builder;
-use Jenssegers\Mongodb\Eloquent\HybridRelations;
 use Jenssegers\Mongodb\Query\Builder as QueryBuilder;
 use Jenssegers\Mongodb\Relations\EmbedsMany;
 use Jenssegers\Mongodb\Relations\EmbedsOne;
 use Jenssegers\Mongodb\Relations\EmbedsOneOrMany;
-use MongoDate;
-use MongoId;
+use MongoDB\BSON\ObjectID;
+use MongoDB\BSON\UTCDateTime;
 use ReflectionMethod;
 
-abstract class Model extends BaseModel {
+abstract class Model extends BaseModel
+{
 
     use HybridRelations;
 
@@ -56,14 +55,12 @@ abstract class Model extends BaseModel {
     {
         // If we don't have a value for 'id', we will use the Mongo '_id' value.
         // This allows us to work with models in a more sql-like way.
-        if ( ! $value and array_key_exists('_id', $this->attributes))
-        {
+        if (! $value and array_key_exists('_id', $this->attributes)) {
             $value = $this->attributes['_id'];
         }
 
-        // Convert MongoId's to string.
-        if ($value instanceof MongoId)
-        {
+        // Convert ObjectID to string.
+        if ($value instanceof ObjectID) {
             return (string) $value;
         }
 
@@ -94,20 +91,17 @@ abstract class Model extends BaseModel {
         // If no relation name was given, we will use this debug backtrace to extract
         // the calling method's name and use that as the relationship name as most
         // of the time this will be what we desire to use for the relatinoships.
-        if (is_null($relation))
-        {
+        if (is_null($relation)) {
             list(, $caller) = debug_backtrace(false);
 
             $relation = $caller['function'];
         }
 
-        if (is_null($localKey))
-        {
+        if (is_null($localKey)) {
             $localKey = $relation;
         }
 
-        if (is_null($foreignKey))
-        {
+        if (is_null($foreignKey)) {
             $foreignKey = snake_case(class_basename($this));
         }
 
@@ -132,20 +126,17 @@ abstract class Model extends BaseModel {
         // If no relation name was given, we will use this debug backtrace to extract
         // the calling method's name and use that as the relationship name as most
         // of the time this will be what we desire to use for the relatinoships.
-        if (is_null($relation))
-        {
+        if (is_null($relation)) {
             list(, $caller) = debug_backtrace(false);
 
             $relation = $caller['function'];
         }
 
-        if (is_null($localKey))
-        {
+        if (is_null($localKey)) {
             $localKey = $relation;
         }
 
-        if (is_null($foreignKey))
-        {
+        if (is_null($foreignKey)) {
             $foreignKey = snake_case(class_basename($this));
         }
 
@@ -157,26 +148,24 @@ abstract class Model extends BaseModel {
     }
 
     /**
-     * Convert a DateTime to a storable MongoDate object.
+     * Convert a DateTime to a storable UTCDateTime object.
      *
      * @param  DateTime|int  $value
-     * @return MongoDate
+     * @return UTCDateTime
      */
     public function fromDateTime($value)
     {
-        // If the value is already a MongoDate instance, we don't need to parse it.
-        if ($value instanceof MongoDate)
-        {
+        // If the value is already a UTCDateTime instance, we don't need to parse it.
+        if ($value instanceof UTCDateTime) {
             return $value;
         }
 
         // Let Eloquent convert the value to a DateTime instance.
-        if ( ! $value instanceof DateTime)
-        {
+        if (! $value instanceof DateTime) {
             $value = parent::asDateTime($value);
         }
 
-        return new MongoDate($value->getTimestamp());
+        return new UTCDateTime($value->getTimestamp() * 1000);
     }
 
     /**
@@ -187,10 +176,9 @@ abstract class Model extends BaseModel {
      */
     protected function asDateTime($value)
     {
-        // Convert MongoDate instances.
-        if ($value instanceof MongoDate)
-        {
-            return Carbon::createFromTimestamp($value->sec);
+        // Convert UTCDateTime instances.
+        if ($value instanceof UTCDateTime) {
+            return Carbon::createFromTimestamp($value->toDateTime()->getTimestamp());
         }
 
         return parent::asDateTime($value);
@@ -209,11 +197,11 @@ abstract class Model extends BaseModel {
     /**
      * Get a fresh timestamp for the model.
      *
-     * @return MongoDate
+     * @return UTCDateTime
      */
     public function freshTimestamp()
     {
-        return new MongoDate;
+        return new UTCDateTime(round(microtime(true) * 1000));
     }
 
     /**
@@ -235,8 +223,7 @@ abstract class Model extends BaseModel {
     public function getAttribute($key)
     {
         // Check if the key is an array dot notation.
-        if (str_contains($key, '.') and array_has($this->attributes, $key))
-        {
+        if (str_contains($key, '.') and array_has($this->attributes, $key)) {
             return $this->getAttributeValue($key);
         }
 
@@ -245,24 +232,20 @@ abstract class Model extends BaseModel {
         // If the "attribute" exists as a method on the model, it may be an
         // embedded model. If so, we need to return the result before it
         // is handled by the parent method.
-        if (method_exists($this, $camelKey))
-        {
+        if (method_exists($this, $camelKey)) {
             $method = new ReflectionMethod(get_called_class(), $camelKey);
 
             // Ensure the method is not static to avoid conflicting with Eloquent methods.
-            if ( ! $method->isStatic())
-            {
+            if (! $method->isStatic()) {
                 $relations = $this->$camelKey();
 
                 // This attribute matches an embedsOne or embedsMany relation so we need
                 // to return the relation results instead of the interal attributes.
-                if ($relations instanceof EmbedsOneOrMany)
-                {
+                if ($relations instanceof EmbedsOneOrMany) {
                     // If the key already exists in the relationships array, it just means the
                     // relationship has already been loaded, so we'll just return it out of
                     // here because there is no need to query within the relations twice.
-                    if (array_key_exists($key, $this->relations))
-                    {
+                    if (array_key_exists($key, $this->relations)) {
                         return $this->relations[$key];
                     }
 
@@ -284,12 +267,10 @@ abstract class Model extends BaseModel {
     protected function getAttributeFromArray($key)
     {
         // Support keys in dot notation.
-        if (str_contains($key, '.'))
-        {
+        if (str_contains($key, '.')) {
             $attributes = array_dot($this->attributes);
 
-            if (array_key_exists($key, $attributes))
-            {
+            if (array_key_exists($key, $attributes)) {
                 return $attributes[$key];
             }
         }
@@ -305,19 +286,16 @@ abstract class Model extends BaseModel {
      */
     public function setAttribute($key, $value)
     {
-        // Convert _id to MongoId.
-        if ($key == '_id' and is_string($value))
-        {
+        // Convert _id to ObjectID.
+        if ($key == '_id' and is_string($value)) {
             $builder = $this->newBaseQueryBuilder();
 
             $value = $builder->convertKey($value);
         }
 
         // Support keys in dot notation.
-        elseif (str_contains($key, '.'))
-        {
-            if (in_array($key, $this->getDates()) && $value)
-            {
+        elseif (str_contains($key, '.')) {
+            if (in_array($key, $this->getDates()) && $value) {
                 $value = $this->fromDateTime($value);
             }
 
@@ -342,24 +320,30 @@ abstract class Model extends BaseModel {
         // MongoDB related objects to a string representation. This kind
         // of mimics the SQL behaviour so that dates are formatted
         // nicely when your models are converted to JSON.
-        foreach ($attributes as $key => &$value)
-        {
-            if ($value instanceof MongoId)
-            {
+        foreach ($attributes as $key => &$value) {
+            if ($value instanceof ObjectID) {
                 $value = (string) $value;
             }
         }
 
         // Convert dot-notation dates.
-        foreach ($this->getDates() as $key)
-        {
-            if (str_contains($key, '.') and array_has($attributes, $key))
-            {
+        foreach ($this->getDates() as $key) {
+            if (str_contains($key, '.') and array_has($attributes, $key)) {
                 array_set($attributes, $key, (string) $this->asDateTime(array_get($attributes, $key)));
             }
         }
 
         return $attributes;
+    }
+
+    /**
+     * Get the casts array.
+     *
+     * @return array
+     */
+    public function getCasts()
+    {
+        return $this->casts;
     }
 
     /**
@@ -371,14 +355,13 @@ abstract class Model extends BaseModel {
     protected function originalIsNumericallyEquivalent($key)
     {
         $current = $this->attributes[$key];
-
         $original = $this->original[$key];
 
         // Date comparison.
-        if (in_array($key, $this->getDates()))
-        {
-            $current = $current instanceof MongoDate ? $this->asDateTime($current) : $current;
-            $original = $original instanceof MongoDate ? $this->asDateTime($original) : $original;
+        if (in_array($key, $this->getDates())) {
+            $current = $current instanceof UTCDateTime ? $this->asDateTime($current) : $current;
+            $original = $original instanceof UTCDateTime ? $this->asDateTime($original) : $original;
+
             return $current == $original;
         }
 
@@ -393,11 +376,12 @@ abstract class Model extends BaseModel {
      */
     public function drop($columns)
     {
-        if ( ! is_array($columns)) $columns = [$columns];
+        if (! is_array($columns)) {
+            $columns = [$columns];
+        }
 
         // Unset attributes
-        foreach ($columns as $column)
-        {
+        foreach ($columns as $column) {
             $this->__unset($column);
         }
 
@@ -412,21 +396,19 @@ abstract class Model extends BaseModel {
      */
     public function push()
     {
-        if ($parameters = func_get_args())
-        {
+        if ($parameters = func_get_args()) {
             $unique = false;
 
-            if (count($parameters) == 3)
-            {
+            if (count($parameters) == 3) {
                 list($column, $values, $unique) = $parameters;
-            }
-            else
-            {
+            } else {
                 list($column, $values) = $parameters;
             }
 
             // Do batch push by default.
-            if ( ! is_array($values)) $values = [$values];
+            if (! is_array($values)) {
+                $values = [$values];
+            }
 
             $query = $this->setKeysForSaveQuery($this->newQuery());
 
@@ -448,7 +430,9 @@ abstract class Model extends BaseModel {
     public function pull($column, $values)
     {
         // Do batch pull by default.
-        if ( ! is_array($values)) $values = [$values];
+        if (! is_array($values)) {
+            $values = [$values];
+        }
 
         $query = $this->setKeysForSaveQuery($this->newQuery());
 
@@ -468,10 +452,11 @@ abstract class Model extends BaseModel {
     {
         $current = $this->getAttributeFromArray($column) ?: [];
 
-        foreach ($values as $value)
-        {
+        foreach ($values as $value) {
             // Don't add duplicate values when we only want unique values.
-            if ($unique and in_array($value, $current)) continue;
+            if ($unique and in_array($value, $current)) {
+                continue;
+            }
 
             array_push($current, $value);
         }
@@ -491,12 +476,10 @@ abstract class Model extends BaseModel {
     {
         $current = $this->getAttributeFromArray($column) ?: [];
 
-        foreach ($values as $value)
-        {
+        foreach ($values as $value) {
             $keys = array_keys($current, $value);
 
-            foreach ($keys as $key)
-            {
+            foreach ($keys as $key) {
                 unset($current[$key]);
             }
         }
@@ -559,12 +542,10 @@ abstract class Model extends BaseModel {
     public function __call($method, $parameters)
     {
         // Unset method
-        if ($method == 'unset')
-        {
+        if ($method == 'unset') {
             return call_user_func_array([$this, 'drop'], $parameters);
         }
 
         return parent::__call($method, $parameters);
     }
-
 }

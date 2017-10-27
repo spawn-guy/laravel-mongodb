@@ -3,14 +3,29 @@
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
-use MongoId;
+use MongoDB\BSON\ObjectID;
 
-class EmbedsMany extends EmbedsOneOrMany {
+class EmbedsMany extends EmbedsOneOrMany
+{
+    /**
+     * Initialize the relation on a set of models.
+     *
+     * @param  array   $models
+     * @param  string  $relation
+     */
+    public function initRelation(array $models, $relation)
+    {
+        foreach ($models as $model) {
+            $model->setRelation($relation, $this->related->newCollection());
+        }
+
+        return $models;
+    }
 
     /**
      * Get the results of the relationship.
      *
-     * @return \Jenssegers\Mongodb\Eloquent\Collection
+     * @return \Illuminate\Database\Eloquent\Collection
      */
     public function getResults()
     {
@@ -26,14 +41,12 @@ class EmbedsMany extends EmbedsOneOrMany {
     public function performInsert(Model $model)
     {
         // Generate a new key if needed.
-        if ($model->getKeyName() == '_id' and ! $model->getKey())
-        {
-            $model->setAttribute('_id', new MongoId);
+        if ($model->getKeyName() == '_id' and ! $model->getKey()) {
+            $model->setAttribute('_id', new ObjectID);
         }
 
         // For deeply nested documents, let the parent handle the changes.
-        if ($this->isNested())
-        {
+        if ($this->isNested()) {
             $this->associate($model);
 
             return $this->parent->save();
@@ -43,7 +56,9 @@ class EmbedsMany extends EmbedsOneOrMany {
         $result = $this->getBaseQuery()->push($this->localKey, $model->getAttributes(), true);
 
         // Attach the model to its parent.
-        if ($result) $this->associate($model);
+        if ($result) {
+            $this->associate($model);
+        }
 
         return $result ? $model : false;
     }
@@ -57,8 +72,7 @@ class EmbedsMany extends EmbedsOneOrMany {
     public function performUpdate(Model $model)
     {
         // For deeply nested documents, let the parent handle the changes.
-        if ($this->isNested())
-        {
+        if ($this->isNested()) {
             $this->associate($model);
 
             return $this->parent->save();
@@ -75,7 +89,9 @@ class EmbedsMany extends EmbedsOneOrMany {
                                        ->update($values);
 
         // Attach the model to its parent.
-        if ($result) $this->associate($model);
+        if ($result) {
+            $this->associate($model);
+        }
 
         return $result ? $model : false;
     }
@@ -89,8 +105,7 @@ class EmbedsMany extends EmbedsOneOrMany {
     public function performDelete(Model $model)
     {
         // For deeply nested documents, let the parent handle the changes.
-        if ($this->isNested())
-        {
+        if ($this->isNested()) {
             $this->dissociate($model);
 
             return $this->parent->save();
@@ -101,7 +116,9 @@ class EmbedsMany extends EmbedsOneOrMany {
 
         $result = $this->getBaseQuery()->pull($this->localKey, [$model->getKeyName() => $foreignKey]);
 
-        if ($result) $this->dissociate($model);
+        if ($result) {
+            $this->dissociate($model);
+        }
 
         return $result;
     }
@@ -114,12 +131,9 @@ class EmbedsMany extends EmbedsOneOrMany {
      */
     public function associate(Model $model)
     {
-        if ( ! $this->contains($model))
-        {
+        if (! $this->contains($model)) {
             return $this->associateNew($model);
-        }
-        else
-        {
+        } else {
             return $this->associateExisting($model);
         }
     }
@@ -139,10 +153,8 @@ class EmbedsMany extends EmbedsOneOrMany {
         $primaryKey = $this->related->getKeyName();
 
         // Remove the document from the parent model.
-        foreach ($records as $i => $record)
-        {
-            if (in_array($record[$primaryKey], $ids))
-            {
+        foreach ($records as $i => $record) {
+            if (in_array($record[$primaryKey], $ids)) {
                 unset($records[$i]);
             }
         }
@@ -171,9 +183,10 @@ class EmbedsMany extends EmbedsOneOrMany {
         $models = $this->getResults()->only($ids);
 
         // Pull the documents from the database.
-        foreach ($models as $model)
-        {
-            if ($model->delete()) $count++;
+        foreach ($models as $model) {
+            if ($model->delete()) {
+                $count++;
+            }
         }
 
         return $count;
@@ -189,7 +202,9 @@ class EmbedsMany extends EmbedsOneOrMany {
         // Overwrite the local key with an empty array.
         $result = $this->query->update([$this->localKey => []]);
 
-        if ($result) $this->setEmbedded([]);
+        if ($result) {
+            $this->setEmbedded([]);
+        }
 
         return $result;
     }
@@ -225,9 +240,8 @@ class EmbedsMany extends EmbedsOneOrMany {
     protected function associateNew($model)
     {
         // Create a new key if needed.
-        if ( ! $model->getAttribute('_id'))
-        {
-            $model->setAttribute('_id', new MongoId);
+        if (! $model->getAttribute('_id')) {
+            $model->setAttribute('_id', new ObjectID);
         }
 
         $records = $this->getEmbedded();
@@ -254,10 +268,8 @@ class EmbedsMany extends EmbedsOneOrMany {
         $key = $model->getKey();
 
         // Replace the document in the parent model.
-        foreach ($records as &$record)
-        {
-            if ($record[$primaryKey] == $key)
-            {
+        foreach ($records as &$record) {
+            if ($record[$primaryKey] == $key) {
                 $record = $model->getAttributes();
                 break;
             }
@@ -306,7 +318,9 @@ class EmbedsMany extends EmbedsOneOrMany {
      */
     protected function setEmbedded($models)
     {
-        if ( ! is_array($models)) $models = [$models];
+        if (! is_array($models)) {
+            $models = [$models];
+        }
 
         return parent::setEmbedded(array_values($models));
     }
@@ -320,13 +334,10 @@ class EmbedsMany extends EmbedsOneOrMany {
      */
     public function __call($method, $parameters)
     {
-        // Collection methods
-        if (method_exists('Jenssegers\Mongodb\Eloquent\Collection', $method))
-        {
+        if (method_exists('Illuminate\Database\Eloquent\Collection', $method)) {
             return call_user_func_array([$this->getResults(), $method], $parameters);
         }
 
         return parent::__call($method, $parameters);
     }
-
 }

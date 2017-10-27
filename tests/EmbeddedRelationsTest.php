@@ -1,6 +1,7 @@
 <?php
 
-class EmbeddedRelationsTest extends TestCase {
+class EmbeddedRelationsTest extends TestCase
+{
 
     public function tearDown()
     {
@@ -38,7 +39,7 @@ class EmbeddedRelationsTest extends TestCase {
         $this->assertTrue(is_string($address->_id));
 
         $raw = $address->getAttributes();
-        $this->assertInstanceOf('MongoId', $raw['_id']);
+        $this->assertInstanceOf('MongoDB\BSON\ObjectID', $raw['_id']);
 
         $address = $user->addresses()->save(new Address(['city' => 'Paris']));
 
@@ -178,7 +179,7 @@ class EmbeddedRelationsTest extends TestCase {
         $this->assertEquals(['Bruxelles'], $user->addresses->lists('city')->all());
 
         $raw = $address->getAttributes();
-        $this->assertInstanceOf('MongoId', $raw['_id']);
+        $this->assertInstanceOf('MongoDB\BSON\ObjectID', $raw['_id']);
 
         $freshUser = User::find($user->id);
         $this->assertEquals(['Bruxelles'], $freshUser->addresses->lists('city')->all());
@@ -188,7 +189,7 @@ class EmbeddedRelationsTest extends TestCase {
         $this->assertTrue(is_string($address->_id));
 
         $raw = $address->getAttributes();
-        $this->assertInstanceOf('MongoId', $raw['_id']);
+        $this->assertInstanceOf('MongoDB\BSON\ObjectID', $raw['_id']);
     }
 
     public function testEmbedsManyCreateMany()
@@ -423,70 +424,19 @@ class EmbeddedRelationsTest extends TestCase {
 
         $this->assertEquals(['Paris', 'Bruges', 'Brussels', 'Ghent'], $user->addresses()->lists('city')->all());
         $this->assertEquals(['Bruges', 'Brussels', 'Ghent', 'Paris'], $user->addresses()->sortBy('city')->lists('city')->all());
-        $this->assertEquals(['Bruges', 'Brussels', 'Ghent', 'Paris'], $user->addresses()->orderBy('city')->lists('city')->all());
-        $this->assertEquals(['Paris', 'Ghent', 'Brussels', 'Bruges'], $user->addresses()->orderBy('city', 'desc')->lists('city')->all());
-
         $this->assertEquals([], $user->addresses()->where('city', 'New York')->lists('city')->all());
         $this->assertEquals(['Bruges', 'Brussels', 'Ghent'], $user->addresses()->where('country', 'Belgium')->lists('city')->all());
-        $this->assertEquals(['Ghent', 'Brussels', 'Bruges'], $user->addresses()->where('country', 'Belgium')->orderBy('city', 'desc')->lists('city')->all());
+        $this->assertEquals(['Bruges', 'Brussels', 'Ghent'], $user->addresses()->where('country', 'Belgium')->sortBy('city')->lists('city')->all());
 
-        $results = $user->addresses->get(0);
+        $results = $user->addresses->first();
         $this->assertInstanceOf('Address', $results);
 
-        $results = $user->addresses()->where('country', 'Belgium')->get();
-        $this->assertInstanceOf('Jenssegers\Mongodb\Eloquent\Collection', $results);
+        $results = $user->addresses()->where('country', 'Belgium');
+        $this->assertInstanceOf('Illuminate\Database\Eloquent\Collection', $results);
         $this->assertEquals(3, $results->count());
 
-        $results = $user->addresses()->where('country', '!=', 'Belgium')->get();
-        $this->assertEquals(1, $results->count());
-
-        $results = $user->addresses()->where('visited', '>', 4)->get();
+        $results = $user->addresses()->whereIn('visited', [7, 13]);
         $this->assertEquals(2, $results->count());
-
-        $results = $user->addresses()->where('visited', '<', 7)->get();
-        $this->assertEquals(2, $results->count());
-
-        $results = $user->addresses()->where('visited', '<=', 7)->get();
-        $this->assertEquals(3, $results->count());
-
-        $results = $user->addresses()->where('visited', '>=', 7)->get();
-        $this->assertEquals(2, $results->count());
-
-        $results = $user->addresses()->where('visited', 'between', [4, 7])->get();
-        $this->assertEquals(2, $results->count());
-
-        $results = $user->addresses()->whereBetween('visited', [4, 7])->get();
-        $this->assertEquals(2, $results->count());
-
-        $results = $user->addresses()->whereNotBetween('visited', [4, 7])->get();
-        $this->assertEquals(2, $results->count());
-
-        $results = $user->addresses()->whereIn('visited', [7, 13])->get();
-        $this->assertEquals(2, $results->count());
-
-        $results = $user->addresses()->whereNotIn('visited', [7])->get();
-        $this->assertEquals(3, $results->count());
-
-        $results = $user->addresses()->whereNull('something')->get();
-        $this->assertEquals(4, $results->count());
-
-        $results = $user->addresses()->whereNotNull('visited')->get();
-        $this->assertEquals(4, $results->count());
-
-        $results = $user->addresses()->offset(1)->get();
-        $this->assertEquals(3, $results->count());
-
-        $results = $user->addresses()->skip(1)->get();
-        $this->assertEquals(3, $results->count());
-
-        $results = $user->addresses()->limit(2)->get();
-        $this->assertEquals(2, $results->count());
-
-        $result = $user->addresses()->latest()->first();
-        $this->assertEquals('Ghent', $result->city);
-
-        $result = $user->addresses()->oldest()->first();
-        $this->assertEquals('Bruges', $result->city);
     }
 
     public function testEmbedsOne()
@@ -511,7 +461,7 @@ class EmbeddedRelationsTest extends TestCase {
         $this->assertTrue(is_string($father->_id));
 
         $raw = $father->getAttributes();
-        $this->assertInstanceOf('MongoId', $raw['_id']);
+        $this->assertInstanceOf('MongoDB\BSON\ObjectID', $raw['_id']);
 
         $father->setEventDispatcher($events = Mockery::mock('Illuminate\Events\Dispatcher'));
         $events->shouldReceive('until')->once()->with('eloquent.saving: ' . get_class($father), $father)->andReturn(true);
@@ -554,6 +504,12 @@ class EmbeddedRelationsTest extends TestCase {
 
         $this->assertNotNull($user->father);
         $this->assertEquals('Mark Doe', $user->father->name);
+    }
+
+    public function testEmbedsOneNullAssociation()
+    {
+        $user = User::create();
+        $this->assertNull($user->father);
     }
 
     public function testEmbedsOneDelete()
@@ -748,5 +704,4 @@ class EmbeddedRelationsTest extends TestCase {
         $this->assertEquals(2, $results->count());
         $this->assertEquals(3, $results->total());
     }
-
 }

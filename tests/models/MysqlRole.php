@@ -1,9 +1,11 @@
 <?php
 
-use \Illuminate\Support\Facades\Schema;
-use Jenssegers\Eloquent\Model as Eloquent;
+use Illuminate\Support\Facades\Schema;
+use Jenssegers\Mongodb\Eloquent\HybridRelations;
 
-class MysqlRole extends Eloquent {
+class MysqlRole extends Eloquent
+{
+    use HybridRelations;
 
     protected $connection = 'mysql';
     protected $table = 'roles';
@@ -21,21 +23,17 @@ class MysqlRole extends Eloquent {
 
     /**
      * Check if we need to run the schema.
-     * @return [type] [description]
      */
     public static function executeSchema()
     {
         $schema = Schema::connection('mysql');
 
-        if (!$schema->hasTable('roles'))
-        {
-            Schema::connection('mysql')->create('roles', function ($table)
-            {
+        if (!$schema->hasTable('roles')) {
+            Schema::connection('mysql')->create('roles', function ($table) {
                 $table->string('type');
                 $table->string('user_id');
                 $table->timestamps();
             });
         }
     }
-
 }
